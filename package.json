@@ -1,0 +1,28 @@
+{
+  "name": "elevatebox-ai-caller",
+  "version": "1.0.0",
+  "description": "Backend foundation for the ElevateBox AI outbound sales calling system.",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node tests/conversation.service.test.js && node tests/lead-classification.service.test.js && node tests/action-decision.service.test.js && node tests/callback-scheduler.service.test.js && node tests/followup.service.test.js && node tests/call-orchestrator.service.test.js"
+  },
+  "keywords": [
+    "express",
+    "outbound-sales",
+    "elevatebox"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@vapi-ai/server-sdk": "^1.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
