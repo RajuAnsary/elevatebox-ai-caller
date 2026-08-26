@@ -56,13 +56,25 @@ function parseBudget(budget) {
   return null;
 }
 
-function mergeLeadData(existingLeadData, extractedLeadData) {
+function isBudgetCorrection(message) {
+  return /\b(?:actually|instead|correction|correct that|make that|change (?:it|the budget)|not .+ but)\b/i.test(message);
+}
+
+function mergeBudget(existingBudget, extractedBudget, message) {
+  const candidateBudget = parseBudget(extractedBudget);
+  if (!candidateBudget) return existingBudget;
+  if (!existingBudget || candidateBudget >= existingBudget) return candidateBudget;
+
+  return isBudgetCorrection(message) ? candidateBudget : existingBudget;
+}
+
+function mergeLeadData(existingLeadData, extractedLeadData, message) {
   const combinedFeatures = [...existingLeadData.features, ...(extractedLeadData.features || [])];
 
   return {
     businessType: extractedLeadData.businessType || existingLeadData.businessType,
     productCount: extractedLeadData.productCount || existingLeadData.productCount,
-    budget: parseBudget(extractedLeadData.budget) || existingLeadData.budget,
+    budget: mergeBudget(existingLeadData.budget, extractedLeadData.budget, message),
     timeline: extractedLeadData.timeline || existingLeadData.timeline,
     features: [...new Set(combinedFeatures)]
   };
@@ -102,7 +114,7 @@ async function processSessionMessage({ conversationId, message, timezone = 'Asia
     conversationHistory: session.conversationHistory
   });
   session.conversationHistory.push({ role: 'user', content: message.trim() });
-  session.leadData = mergeLeadData(session.leadData, conversationResult.extractedData);
+  session.leadData = mergeLeadData(session.leadData, conversationResult.extractedData, message);
 
   const transcript = createTranscript(session.conversationHistory);
   const classificationResult = classifyLead({ transcript, leadData: session.leadData });

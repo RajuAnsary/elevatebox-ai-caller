@@ -82,7 +82,14 @@ function extractBudget(message) {
   );
   const currencyMatch = message.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)?/i);
   const abbreviatedMatch = message.match(/\b(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)\b/i);
-  const match = explicitBudgetMatch || currencyMatch || abbreviatedMatch;
+  const groupedNumberMatch = message.match(/\b(\d{1,3}(?:,\d{3})+)\b/);
+  const largeNumberMatch = message.match(/\b(\d{4,})\b/);
+  const spokenThousandsMatch = message.match(/\b(fifteen)\s+thousand\b/i);
+  const match = explicitBudgetMatch || currencyMatch || abbreviatedMatch || groupedNumberMatch || largeNumberMatch;
+
+  if (spokenThousandsMatch) {
+    return 15000;
+  }
 
   if (!match) {
     return null;
@@ -96,7 +103,18 @@ function extractBudget(message) {
       ? 100000
       : 1;
 
-  return Number.isFinite(amount) ? amount * multiplier : null;
+  const normalizedAmount = Number.isFinite(amount) ? amount * multiplier : null;
+  const hasCompleteBudgetMarker = Boolean(
+    currencyMatch || abbreviatedMatch || explicitBudgetMatch?.[2]
+  );
+
+  // A small bare number such as "my budget is 15..." is often an interim
+  // transcript fragment. Wait for a complete amount instead of storing it.
+  if (!hasCompleteBudgetMarker && normalizedAmount !== null && normalizedAmount < 1000) {
+    return null;
+  }
+
+  return normalizedAmount;
 }
 
 function extractTimeline(message) {

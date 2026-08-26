@@ -150,7 +150,8 @@ async function handleVapiWebhook(payload) {
   const role = message.role?.toLowerCase();
   const text = getText(message);
   const isTranscript = eventType === 'transcript' || eventType.startsWith('transcript[');
-  const isFinalTranscript = message.transcriptType !== 'partial';
+  const isFinalTranscript = message.transcriptType !== 'partial' &&
+    !eventType.includes('transcriptType="partial"');
 
   if (isTranscript && role === 'user' && isFinalTranscript && typeof text === 'string' && text.trim()) {
     const processed = await processCustomerTranscript(callId, eventType, message, text.trim());

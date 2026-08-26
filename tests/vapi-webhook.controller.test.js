@@ -29,6 +29,15 @@ async function run() {
   assert.equal(started.sessionCreated, true);
   assert.equal(getSession(callId).callStatus, 'ACTIVE');
 
+  const partial = await handleVapiWebhook(event({
+    type: 'transcript[transcriptType="partial"]',
+    role: 'user',
+    transcript: 'My budget is 15...',
+    timestamp: '2026-08-26T09:59:55Z'
+  }));
+  assert.equal(partial.ignored, true);
+  assert.equal(getSession(callId).leadData.budget, null);
+
   const warm = await handleVapiWebhook(event({
     type: 'transcript',
     role: 'user',
@@ -55,6 +64,7 @@ async function run() {
   const duplicate = await handleVapiWebhook(hotPayload);
   assert.equal(duplicate.duplicate, true);
   assert.equal(getSession(callId).conversationHistory.filter((entry) => entry.role === 'user').length, 2);
+  assert.equal(getSession(callId).leadData.budget, 50000);
 
   const callback = await handleVapiWebhook(event({
     type: 'transcript',

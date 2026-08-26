@@ -30,12 +30,44 @@ async function run() {
   assert.equal(hotTurn.leadData.budget, 50000);
   assert.equal(hotTurn.leadData.timeline, 'next week');
 
+  const partialToComplete = await processSessionMessage({
+    conversationId: 'budget-15-to-15000',
+    message: 'My budget is 15...'
+  });
+  assert.equal(partialToComplete.leadData.budget, null);
+  const completeBudget = await processSessionMessage({
+    conversationId: 'budget-15-to-15000',
+    message: '15,000'
+  });
+  assert.equal(completeBudget.leadData.budget, 15000);
+
+  await processSessionMessage({
+    conversationId: 'budget-15-to-thousand',
+    message: 'My budget is 15...'
+  });
+  const thousandBudget = await processSessionMessage({
+    conversationId: 'budget-15-to-thousand',
+    message: '15 thousand'
+  });
+  assert.equal(thousandBudget.leadData.budget, 15000);
+
+  await processSessionMessage({
+    conversationId: 'budget-50-to-50k',
+    message: 'My budget is 50...'
+  });
+  const abbreviatedBudget = await processSessionMessage({
+    conversationId: 'budget-50-to-50k',
+    message: '50k'
+  });
+  assert.equal(abbreviatedBudget.leadData.budget, 50000);
+
   const duplicateHotTurn = await processSessionMessage({
     conversationId: 'session-hot',
     message: 'I am ready to proceed. Can you start next week?'
   });
   assert.equal(duplicateHotTurn.action.action, 'SEND_WHATSAPP');
   assert.equal(duplicateHotTurn.action.triggered, false);
+  assert.equal(duplicateHotTurn.leadData.budget, 50000);
   assert.ok(getWhatsAppDelivery('session-hot', 'mid-call'));
 
   const hotEnd = await endSession('session-hot');

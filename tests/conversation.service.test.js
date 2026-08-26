@@ -41,6 +41,26 @@ const abbreviatedBudgetTurn = processConversationMessage({
 
 assert.equal(abbreviatedBudgetTurn.extractedData.budget, 50000);
 
+const partialBudgetTurn = processConversationMessage({
+  message: 'My budget is 15...',
+  conversationHistory: []
+});
+
+assert.equal(partialBudgetTurn.extractedData.budget, null);
+
+for (const [message, expectedBudget] of [
+  ['My budget is 15000', 15000],
+  ['My budget is 15,000', 15000],
+  ['My budget is ₹15000', 15000],
+  ['My budget is ₹15,000', 15000],
+  ['My budget is 15 thousand', 15000],
+  ['My budget is fifteen thousand', 15000],
+  ['My budget is 15k', 15000]
+]) {
+  const result = processConversationMessage({ message, conversationHistory: [] });
+  assert.equal(result.extractedData.budget, expectedBudget, message);
+}
+
 const hindiTurn = processConversationMessage({
   message: 'मुझे जल्द वेबसाइट चाहिए',
   conversationHistory: []
