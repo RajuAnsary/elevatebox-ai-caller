@@ -16,6 +16,10 @@ function event(message) {
   return { message: { call: { id: callId }, ...message } };
 }
 
+function eventFor(currentCallId, message) {
+  return { message: { call: { id: currentCallId }, ...message } };
+}
+
 async function run() {
   resetSessions();
   resetScheduler();
@@ -97,6 +101,44 @@ async function run() {
   const unknown = await handleVapiWebhook(event({ type: 'unrecognized-event' }));
   assert.equal(unknown.received, true);
   assert.equal(unknown.ignored, true);
+
+  const finalRetentionCallId = 'vapi-call-final-retention';
+  await handleVapiWebhook(eventFor(finalRetentionCallId, {
+    type: 'status-update',
+    status: 'in-progress'
+  }));
+  const interim = await handleVapiWebhook(eventFor(finalRetentionCallId, {
+    type: 'transcript',
+    role: 'user',
+    transcriptType: 'partial',
+    transcript: 'My budget is 15,000 rupees. I need the website next week.',
+    timestamp: '2026-08-26T11:00:00Z'
+  }));
+  assert.equal(interim.ignored, true);
+
+  const finalTranscript = {
+    type: 'transcript',
+    role: 'user',
+    transcriptType: 'final',
+    transcript: 'I sell clothes. Around 100 products. My budget is 15,000 rupees. I need the website next week. Please send me the quotation.',
+    timestamp: '2026-08-26T11:00:05Z'
+  };
+  const finalResult = await handleVapiWebhook(eventFor(finalRetentionCallId, finalTranscript));
+  assert.equal(finalResult.result.leadData.businessType, 'clothes');
+  assert.equal(finalResult.result.leadData.productCount, 100);
+  assert.equal(finalResult.result.leadData.budget, 15000);
+  assert.equal(finalResult.result.leadData.timeline, 'next week');
+  assert.equal(finalResult.result.classification, 'HOT');
+  assert.equal(finalResult.result.action.action, 'SEND_WHATSAPP');
+
+  const duplicateFinal = await handleVapiWebhook(eventFor(finalRetentionCallId, {
+    ...finalTranscript,
+    timestamp: '2026-08-26T11:00:06Z'
+  }));
+  assert.equal(duplicateFinal.duplicate, true);
+  assert.equal(getSession(finalRetentionCallId).conversationHistory.filter((entry) => entry.role === 'user').length, 1);
+  assert.equal(getSession(finalRetentionCallId).leadData.timeline, 'next week');
+  assert.equal(getSession(finalRetentionCallId).classification, 'HOT');
 
   console.log('Vapi webhook controller tests passed.');
 }

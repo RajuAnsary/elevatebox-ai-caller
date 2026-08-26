@@ -34,9 +34,17 @@ function getText(message) {
 }
 
 function getFingerprint(callId, eventType, role, text, message) {
+  if (role === 'user') {
+    return [
+      callId,
+      'customer-message',
+      (text || '').replace(/\s+/g, ' ').trim().toLowerCase()
+    ].join(':');
+  }
+
   return [
     callId,
-    role === 'user' ? 'customer-message' : eventType,
+    eventType,
     role || '',
     text || '',
     message?.id || message?.timestamp || ''
