@@ -51,6 +51,10 @@ assert.equal(partialBudgetTurn.extractedData.budget, null);
 for (const [message, expectedBudget] of [
   ['My budget is 15000', 15000],
   ['My budget is 15,000', 15000],
+  ['My budget is 15. 000', 15000],
+  ['My budget is 15 . 000 rupees', 15000],
+  ['Budget around 50. 000', 50000],
+  ['My budget is 1. 50. 000', 150000],
   ['My budget is ₹15000', 15000],
   ['My budget is ₹15,000', 15000],
   ['My budget is 15 thousand', 15000],

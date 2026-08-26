@@ -76,15 +76,25 @@ function extractProductCount(message) {
   return match ? Number.parseInt(match[1].replaceAll(',', ''), 10) : null;
 }
 
+function normalizeSpokenBudgetDigits(message) {
+  // Vapi may insert sentence-like punctuation between Indian-style digit groups
+  // (for example, "1. 50. 000"). Restrict normalization to groups ending in
+  // a three-digit group so ordinary sentence punctuation is left untouched.
+  return message
+    .replace(/\b(\d{1,2})\s*\.\s*(\d{2})\s*\.\s*(\d{3})\b/g, '$1$2$3')
+    .replace(/\b(\d{1,2})\s*\.\s*(\d{3})\b/g, '$1$2');
+}
+
 function extractBudget(message) {
-  const explicitBudgetMatch = message.match(
+  const normalizedMessage = normalizeSpokenBudgetDigits(message);
+  const explicitBudgetMatch = normalizedMessage.match(
     /\b(?:budget|price range|investment)\b\s*(?:(?:is|of|around|about|approximately|approx)\s*)?(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)?/i
   );
-  const currencyMatch = message.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)?/i);
-  const abbreviatedMatch = message.match(/\b(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)\b/i);
-  const groupedNumberMatch = message.match(/\b(\d{1,3}(?:,\d{3})+)\b/);
-  const largeNumberMatch = message.match(/\b(\d{4,})\b/);
-  const spokenThousandsMatch = message.match(/\b(fifteen)\s+thousand\b/i);
+  const currencyMatch = normalizedMessage.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)?/i);
+  const abbreviatedMatch = normalizedMessage.match(/\b(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakh|lakhs)\b/i);
+  const groupedNumberMatch = normalizedMessage.match(/\b(\d{1,3}(?:,\d{3})+)\b/);
+  const largeNumberMatch = normalizedMessage.match(/\b(\d{4,})\b/);
+  const spokenThousandsMatch = normalizedMessage.match(/\b(fifteen)\s+thousand\b/i);
   const match = explicitBudgetMatch || currencyMatch || abbreviatedMatch || groupedNumberMatch || largeNumberMatch;
 
   if (spokenThousandsMatch) {

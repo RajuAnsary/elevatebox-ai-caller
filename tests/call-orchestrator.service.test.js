@@ -30,6 +30,19 @@ async function run() {
   assert.equal(hotTurn.leadData.budget, 50000);
   assert.equal(hotTurn.leadData.timeline, 'next week');
 
+  await processSessionMessage({
+    conversationId: 'spoken-budget-hot',
+    message: 'I sell clothes and want an online store.'
+  });
+  const spokenBudgetHotTurn = await processSessionMessage({
+    conversationId: 'spoken-budget-hot',
+    message: 'My budget is 15. 000 and I need it next week. Please send the quotation.'
+  });
+  assert.equal(spokenBudgetHotTurn.leadData.budget, 15000);
+  assert.equal(spokenBudgetHotTurn.leadData.timeline, 'next week');
+  assert.equal(spokenBudgetHotTurn.classification, 'HOT');
+  assert.equal(spokenBudgetHotTurn.action.action, 'SEND_WHATSAPP');
+
   const partialToComplete = await processSessionMessage({
     conversationId: 'budget-15-to-15000',
     message: 'My budget is 15...'
