@@ -164,6 +164,7 @@ function resetSessions() {
 
 module.exports = {
   endSession,
+  getOrCreateSession,
   getSession,
   processSessionMessage,
   resetSessions

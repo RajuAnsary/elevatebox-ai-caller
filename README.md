@@ -99,6 +99,59 @@ Invoke-RestMethod -Method Post `
 
 The server binds to `0.0.0.0` on the `PORT` environment variable, which is required for Render web services. The existing `GET /health` route is production-ready and returns a `200` status when the API is running.
 
+## Vapi live-call webhook
+
+Set this Render environment variable before configuring the Vapi assistant:
+
+```env
+PUBLIC_BASE_URL=https://elevatebox-ai-caller.onrender.com
+```
+
+The exact Vapi Server URL / webhook URL is:
+
+```text
+https://elevatebox-ai-caller.onrender.com/webhooks/vapi
+```
+
+In the Vapi dashboard, open the assistant used by `VAPI_ASSISTANT_ID`, set its **Server URL** to that value, and enable these server messages:
+
+- `status-update`
+- `transcript`
+- `conversation-update`
+- `end-of-call-report`
+
+When `PUBLIC_BASE_URL` is set, `POST /api/calls/configure-assistant` also configures that Server URL and those events through the existing Vapi assistant update flow.
+
+The webhook uses Vapi's `message` envelope. It creates a session when a call enters `in-progress`, processes final customer transcripts, safely ignores partial or unknown events, deduplicates repeated customer transcript events, and triggers the existing callback/follow-up flow on call end. Assistant transcripts are acknowledged but are not treated as customer answers.
+
+Simulate a Vapi transcript locally after starting the server:
+
+```powershell
+$body = @{
+  message = @{
+    type = 'transcript'
+    call = @{ id = 'local-vapi-demo' }
+    role = 'user'
+    transcriptType = 'final'
+    transcript = 'I sell clothes. My budget is 50000. Can you start next week? Please send the quotation.'
+    timestamp = '2026-08-26T10:00:00Z'
+  }
+} | ConvertTo-Json -Depth 4
+
+Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/webhooks/vapi' `
+  -ContentType 'application/json' -Body $body
+```
+
+To test the deployed endpoint, use the same body with this URL:
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri 'https://elevatebox-ai-caller.onrender.com/webhooks/vapi' `
+  -ContentType 'application/json' -Body $body
+```
+
+The local test suite simulates call start, multiple customer transcripts, WARM-to-HOT qualification, one mid-call mock WhatsApp action, callback detection, end-of-call reporting, final follow-up delivery, and duplicate webhook events. No paid phone provider is required.
+
 ## Trigger an outbound test call
 
 After filling in all Vapi environment variables, start one call to `TARGET_PHONE_NUMBER`:
@@ -310,6 +363,7 @@ To test the conversation in the Vapi dashboard, first call `/api/calls/configure
 | POST | `/api/callbacks/schedule` | Parses and stores a local callback appointment. |
 | POST | `/api/followups/generate` | Creates a contextual final follow-up without sending it. |
 | POST | `/api/followups/send` | Creates and mock-sends one final follow-up per conversation. |
+| POST | `/webhooks/vapi` | Receives Vapi lifecycle and transcript events for live-call orchestration. |
 | POST | `/api/sessions/:conversationId/message` | Processes one customer turn through the complete local workflow. |
 | POST | `/api/sessions/:conversationId/end` | Ends the session and mock-sends its final follow-up. |
 | GET | `/api/sessions/:conversationId` | Returns the current in-memory session state. |

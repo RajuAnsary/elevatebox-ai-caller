@@ -11,6 +11,26 @@ class VapiConfigurationError extends Error {
   }
 }
 
+function getVapiWebhookConfiguration() {
+  if (!process.env.PUBLIC_BASE_URL) {
+    return null;
+  }
+
+  try {
+    return {
+      serverUrl: new URL('/webhooks/vapi', process.env.PUBLIC_BASE_URL).toString(),
+      serverMessages: [
+        'status-update',
+        'transcript',
+        'conversation-update',
+        'end-of-call-report'
+      ]
+    };
+  } catch {
+    throw new VapiConfigurationError(['a valid PUBLIC_BASE_URL']);
+  }
+}
+
 function getVapiConfiguration({
   requiresPhoneNumberId = true,
   requiresTargetPhoneNumber = true
@@ -49,10 +69,15 @@ async function configureSalesAssistant() {
   });
   const vapi = new VapiClient({ token: apiKey });
   const assistant = await vapi.assistants.get({ id: assistantId });
+  const webhookConfiguration = getVapiWebhookConfiguration();
   const existingSystemMessage = getSystemMessage(assistant.model);
   const isConfigured =
     assistant.firstMessage === SALES_AGENT_FIRST_MESSAGE &&
-    existingSystemMessage?.content === SALES_AGENT_SYSTEM_PROMPT;
+    existingSystemMessage?.content === SALES_AGENT_SYSTEM_PROMPT &&
+    (!webhookConfiguration || (
+      assistant.server?.url === webhookConfiguration.serverUrl &&
+      webhookConfiguration.serverMessages.every((message) => assistant.serverMessages?.includes(message))
+    ));
 
   if (isConfigured) {
     return assistant;
@@ -71,7 +96,14 @@ async function configureSalesAssistant() {
     model: {
       ...assistant.model,
       messages: [{ role: 'system', content: SALES_AGENT_SYSTEM_PROMPT }]
-    }
+    },
+    ...(webhookConfiguration && {
+      server: {
+        ...assistant.server,
+        url: webhookConfiguration.serverUrl
+      },
+      serverMessages: webhookConfiguration.serverMessages
+    })
   });
 }
 
