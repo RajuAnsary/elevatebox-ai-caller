@@ -23,6 +23,16 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/health', healthRoutes);
 app.use('/webhooks', webhookRoutes);
 
+app.get('/', (_request, response) => {
+  response.status(200).json({
+    name: 'ElevateBox AI Voice Sales Assistant',
+    status: 'running',
+    description: 'AI voice sales assistant with lead qualification, callback scheduling, and WhatsApp follow-up.',
+    health: '/health',
+    repository: 'https://github.com/RajuAnsary/elevatebox-ai-caller'
+  });
+});
+
 app.use((_request, response) => {
   response.status(404).json({ error: 'Route not found' });
 });

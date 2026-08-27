@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node tests/conversation.service.test.js && node tests/lead-classification.service.test.js && node tests/action-decision.service.test.js && node tests/callback-scheduler.service.test.js && node tests/followup.service.test.js && node tests/whatsapp.service.test.js && node tests/exotel.service.test.js && node tests/call-orchestrator.service.test.js && node tests/vapi-webhook.controller.test.js"
+    "test": "node tests/root-route.test.js && node tests/conversation.service.test.js && node tests/lead-classification.service.test.js && node tests/action-decision.service.test.js && node tests/callback-scheduler.service.test.js && node tests/followup.service.test.js && node tests/whatsapp.service.test.js && node tests/exotel.service.test.js && node tests/call-orchestrator.service.test.js && node tests/vapi-webhook.controller.test.js"
   },
   "keywords": [
     "express",
