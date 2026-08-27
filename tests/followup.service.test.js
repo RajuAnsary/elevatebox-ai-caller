@@ -2,7 +2,8 @@ const assert = require('node:assert/strict');
 const { generateFollowup, sendFollowup } = require('../src/services/followup.service');
 const {
   getWhatsAppDelivery,
-  resetMockWhatsAppService
+  resetMockWhatsAppService,
+  setWhatsAppProvider
 } = require('../src/services/whatsapp.service');
 
 const hotInput = {
@@ -68,6 +69,38 @@ async function run() {
   const duplicateSend = await sendFollowup(hotInput);
   assert.equal(duplicateSend.sent, false);
   assert.equal(duplicateSend.duplicate, true);
+
+  const originalPhone = process.env.MY_PHONE_NUMBER;
+  const originalResume = process.env.RESUME_PATH;
+  const originalArchitectureImage = process.env.ARCHITECTURE_IMAGE_PATH;
+  const mediaCalls = [];
+  process.env.MY_PHONE_NUMBER = '918688664337';
+  process.env.RESUME_PATH = 'https://example.com/resume.pdf';
+  process.env.ARCHITECTURE_IMAGE_PATH = 'https://example.com/architecture.png';
+  resetMockWhatsAppService();
+  setWhatsAppProvider({
+    name: 'test-provider',
+    async sendMessage(payload) {
+      mediaCalls.push({ type: 'text', payload });
+      return { provider: 'test-provider', sent: true, providerMessageId: 'text-id', error: null };
+    },
+    async sendImage(payload) {
+      mediaCalls.push({ type: 'image', payload });
+      return { provider: 'test-provider', sent: true, providerMessageId: 'image-id', error: null };
+    },
+    async sendDocument(payload) {
+      mediaCalls.push({ type: 'document', payload });
+      return { provider: 'test-provider', sent: true, providerMessageId: 'document-id', error: null };
+    }
+  });
+  const mediaFollowup = await sendFollowup({ ...hotInput, conversationId: 'followup-media' });
+  assert.equal(mediaFollowup.sent, true);
+  assert.match(mediaFollowup.message, /You can reach me at: 918688664337/);
+  assert.deepEqual(mediaCalls.map((call) => call.type), ['text', 'image', 'document']);
+  if (originalPhone === undefined) delete process.env.MY_PHONE_NUMBER; else process.env.MY_PHONE_NUMBER = originalPhone;
+  if (originalResume === undefined) delete process.env.RESUME_PATH; else process.env.RESUME_PATH = originalResume;
+  if (originalArchitectureImage === undefined) delete process.env.ARCHITECTURE_IMAGE_PATH; else process.env.ARCHITECTURE_IMAGE_PATH = originalArchitectureImage;
+  resetMockWhatsAppService();
 
   console.log('Follow-up service tests passed.');
 }

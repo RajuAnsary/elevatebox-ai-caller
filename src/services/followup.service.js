@@ -118,6 +118,10 @@ function generateFollowup({
     messageParts.push('Sharing this as a helpful reference for whenever you decide to explore your online store—no rush at all.');
   }
 
+  if (process.env.MY_PHONE_NUMBER) {
+    messageParts.push(`You can reach me at: ${process.env.MY_PHONE_NUMBER}`);
+  }
+
   return {
     conversationId,
     message: messageParts.join(' '),
@@ -128,11 +132,10 @@ function generateFollowup({
 
 async function sendFollowup(input) {
   const followup = generateFollowup(input);
-  const attachments = Object.values(followup.attachments).filter(Boolean);
   const deliveryResult = await sendWhatsAppMessage({
     conversationId: followup.conversationId,
     message: followup.message,
-    attachments,
+    attachments: followup.attachments,
     messageType: 'final-followup'
   });
 

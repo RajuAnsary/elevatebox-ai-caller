@@ -76,6 +76,11 @@ Node.js and Express backend foundation for an AI outbound sales calling system. 
    | `MY_PHONE_NUMBER` | Optional | Follow-up metadata only. |
    | `RESUME_PATH` | Optional | Resume attachment metadata only. |
    | `ARCHITECTURE_IMAGE_PATH` | Optional | Architecture-image attachment metadata only. |
+   | `WHATSAPP_PROVIDER` | Optional | Set to `meta` to enable Meta WhatsApp Cloud API; leave unset for mock delivery. |
+   | `WHATSAPP_ACCESS_TOKEN` | Required for Meta | Meta system-user access token. |
+   | `WHATSAPP_PHONE_NUMBER_ID` | Required for Meta | WhatsApp sender phone-number ID from Meta. |
+   | `WHATSAPP_API_VERSION` | Required for Meta | Graph API version, such as `v23.0`. |
+   | `WHATSAPP_RECIPIENT_NUMBER` | Required for Meta | Recipient number; a bare Indian mobile number is normalized to the `91` country code. |
 
    The local conversation, classification, callback, mock WhatsApp, follow-up, and session routes run without Vapi variables. Never add real values to `.env.example`, source code, or a public repository.
 
@@ -190,15 +195,60 @@ curl -X POST http://localhost:3000/api/leads/classify \
 
 The response includes `classification`, `confidence`, a contextual `reason`, the supporting `signals`, and any `barrier`.
 
-## Mid-call actions and mock WhatsApp
+## WhatsApp delivery: mock or Meta Cloud API
+
+The existing WhatsApp provider abstraction now supports both local mock delivery and Meta WhatsApp Cloud API delivery.
+
+- Default: leave `WHATSAPP_PROVIDER` unset. Messages are logged and retained in memory; no external request is made.
+- Meta: set `WHATSAPP_PROVIDER=meta` and configure all of the following in Render or `.env`:
+
+  ```env
+  WHATSAPP_PROVIDER=meta
+  WHATSAPP_ACCESS_TOKEN=
+  WHATSAPP_PHONE_NUMBER_ID=
+  WHATSAPP_API_VERSION=v23.0
+  WHATSAPP_RECIPIENT_NUMBER=
+  ```
+
+In the Meta App Dashboard, add the WhatsApp product, use its API Setup page to obtain the sender **Phone Number ID**, and create a suitable system-user access token for the app. Add the intended test recipient in Meta before testing. Store the token only in Render’s Environment settings—never in source control.
+
+The service sends text through:
+
+```text
+POST https://graph.facebook.com/{WHATSAPP_API_VERSION}/{WHATSAPP_PHONE_NUMBER_ID}/messages
+```
+
+with the recipient normalized to digits-only E.164 format. For example, `8688664337` becomes `918688664337`, while `+918688664337` remains `918688664337`.
+
+To send optional architecture/resume media after the final text, set `ARCHITECTURE_IMAGE_PATH` and `RESUME_PATH` to public HTTPS URLs. Meta fetches these URLs directly, so local filesystem paths are skipped with a warning without failing the text follow-up.
+
+For a safe real-message test, set `WHATSAPP_RECIPIENT_NUMBER` to a WhatsApp number you control and have configured as an allowed Meta test recipient. Then trigger one HOT action:
+
+```powershell
+$body = @{
+  conversationId = 'meta-safe-test-001'
+  classification = 'HOT'
+  confidence = 0.91
+  leadData = @{ businessType = 'clothes'; productCount = 100; budget = 50000; timeline = 'next week'; features = @() }
+  transcript = 'I need an online store next week. Please send the quotation.'
+} | ConvertTo-Json -Depth 4
+
+Invoke-RestMethod -Method Post `
+  -Uri 'https://elevatebox-ai-caller.onrender.com/api/actions/evaluate' `
+  -ContentType 'application/json' -Body $body
+```
+
+The response includes normalized delivery metadata: `provider`, `sent`, `providerMessageId`, and `error`. A provider failure is retained safely and does not crash Vapi webhook processing.
+
+## Mid-call actions
 
 `POST /api/actions/evaluate` decides the next action from an existing classification. It is designed to be called as soon as a mid-call classification is available:
 
-- `HOT` immediately sends one contextual WhatsApp follow-up through the local mock provider.
+- `HOT` immediately sends one contextual WhatsApp follow-up through the configured provider.
 - `WARM` returns `RECOMMEND_CALLBACK`; it does not schedule a callback or send WhatsApp.
 - `COLD` returns `LOW_PRIORITY_FOLLOW_UP`; it does not send WhatsApp mid-call.
 
-The mock WhatsApp provider logs the outgoing message and retains delivery state in memory. A `conversationId` can send the high-intent message only once for the lifetime of the running server.
+The mock provider logs the outgoing message and retains delivery state in memory. A `conversationId` can send the high-intent message only once for the lifetime of the running server; the same duplicate protection applies to Meta delivery.
 
 Test it locally without any WhatsApp credentials:
 
@@ -208,7 +258,7 @@ curl -X POST http://localhost:3000/api/actions/evaluate \
   -d "{\"conversationId\":\"test-123\",\"classification\":\"HOT\",\"confidence\":0.91,\"leadData\":{\"businessType\":\"clothes\",\"budget\":50000,\"timeline\":\"1 month\",\"features\":[\"payment gateway\"]},\"transcript\":\"I need the website next month. Can you start next week?\"}"
 ```
 
-Repeat the same request to confirm `triggered` becomes `false`. To later use Twilio WhatsApp, Meta Cloud API, or another provider, implement a provider object with `sendMessage({ conversationId, message })` and register it through `setWhatsAppProvider`. No provider credentials are hardcoded.
+Repeat the same request to confirm `triggered` becomes `false`. The provider interface supports `sendMessage`, `sendImage`, and `sendDocument`, so another provider can be added without changing the lead/action flow. No provider credentials are hardcoded.
 
 ## Callback scheduling
 
@@ -246,8 +296,8 @@ Set these optional values in `.env` when you want the response metadata to inclu
 | Variable | Purpose |
 | --- | --- |
 | `MY_PHONE_NUMBER` | Your phone number to include as metadata; it is never hardcoded. |
-| `RESUME_PATH` | Local path or future provider URL for a resume attachment. |
-| `ARCHITECTURE_IMAGE_PATH` | Local path or future provider URL for an architecture-image attachment. |
+| `RESUME_PATH` | Public HTTPS URL for a resume PDF when using Meta; otherwise optional metadata. |
+| `ARCHITECTURE_IMAGE_PATH` | Public HTTPS URL for an architecture image when using Meta; otherwise optional metadata. |
 
 Use PowerShell to generate a local follow-up:
 
@@ -270,7 +320,7 @@ Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/followups/generat
   -ContentType 'application/json' -Body $body
 ```
 
-Replace `generate` with `send` to exercise the mock delivery. The response includes attachment metadata. A real provider adapter can later upload or map these paths to provider-specific media IDs, then pass them through the existing `sendMessage` provider contract.
+Replace `generate` with `send` to exercise delivery. In Meta mode, the final flow sends contextual text first, then the configured architecture image and resume document. Local tests mock every HTTP request, so `npm test` never sends a real WhatsApp message.
 
 ## End-to-end session orchestration
 

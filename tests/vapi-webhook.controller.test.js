@@ -7,7 +7,8 @@ const { getSession, resetSessions } = require('../src/services/call-orchestrator
 const { resetScheduler } = require('../src/services/scheduler.service');
 const {
   getWhatsAppDelivery,
-  resetMockWhatsAppService
+  resetMockWhatsAppService,
+  setWhatsAppProvider
 } = require('../src/services/whatsapp.service');
 
 const callId = 'vapi-call-001';
@@ -139,6 +140,28 @@ async function run() {
   assert.equal(getSession(finalRetentionCallId).conversationHistory.filter((entry) => entry.role === 'user').length, 1);
   assert.equal(getSession(finalRetentionCallId).leadData.timeline, 'next week');
   assert.equal(getSession(finalRetentionCallId).classification, 'HOT');
+
+  const providerErrorCallId = 'vapi-call-provider-error';
+  setWhatsAppProvider({
+    async sendMessage() {
+      throw new Error('Provider unavailable');
+    }
+  });
+  await handleVapiWebhook(eventFor(providerErrorCallId, {
+    type: 'status-update',
+    status: 'in-progress'
+  }));
+  const providerErrorResult = await handleVapiWebhook(eventFor(providerErrorCallId, {
+    type: 'transcript',
+    role: 'user',
+    transcriptType: 'final',
+    transcript: 'I sell clothes. My budget is 50000. I need it next week. Please send the quotation.',
+    timestamp: '2026-08-26T11:01:00Z'
+  }));
+  assert.equal(providerErrorResult.received, true);
+  assert.equal(providerErrorResult.result.classification, 'HOT');
+  assert.equal(providerErrorResult.result.action.triggered, false);
+  resetMockWhatsAppService();
 
   console.log('Vapi webhook controller tests passed.');
 }

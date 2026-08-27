@@ -24,6 +24,10 @@ function createWhatsAppMessage(leadData = {}) {
   const details = [`an e-commerce website for your ${getBusinessDescription(leadData.businessType)}`];
   const budget = formatBudget(leadData.budget);
 
+  if (Number.isFinite(Number(leadData.productCount)) && Number(leadData.productCount) > 0) {
+    details.push(`around ${Number(leadData.productCount)} products`);
+  }
+
   if (budget) {
     details.push(`around ${budget} budget`);
   }
@@ -36,7 +40,7 @@ function createWhatsAppMessage(leadData = {}) {
     details.push(`features such as ${leadData.features.join(', ')}`);
   }
 
-  return `Hi, great speaking with you. Based on our discussion, you're looking for ${details.join(', ')}. I'll share the next steps shortly.`;
+  return `Hi, great speaking with you. Based on our discussion, you're looking for ${details.join(', ')}. I’m sharing the next steps here while we continue the call.`;
 }
 
 function validateActionInput({ conversationId, classification }) {
@@ -60,9 +64,12 @@ async function evaluateAction({ conversationId, classification, confidence, lead
       action: 'SEND_WHATSAPP',
       triggered: deliveryResult.sent,
       message,
+      delivery: deliveryResult.delivery,
       reason: deliveryResult.duplicate
         ? 'High buying intent was already handled for this conversation.'
-        : 'High buying intent detected'
+        : deliveryResult.sent
+          ? 'High buying intent detected'
+          : 'High buying intent detected, but WhatsApp delivery failed safely.'
     };
   }
 
