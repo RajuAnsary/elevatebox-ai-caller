@@ -9,3 +9,9 @@ I added handling for partial Vapi transcripts, duplicate events, spoken-number n
 Working now: live Vapi conversation, lead extraction, classification, callback parsing, real Meta WhatsApp mid-call action, and final contextual follow-up with media.
 
 Current limitation: autonomous outbound PSTN calling to the target Indian number requires an international-capable telephony provider/number. The call orchestration endpoint is already implemented and provider-ready.
+
+## Current limitation
+
+The complete AI conversation, lead classification, callback logic, real Meta WhatsApp mid-call action, and contextual final follow-up are working.
+
+Autonomous outbound PSTN calling to the final Indian target number is provider-limited in the current free setup. Vapi requires an international-capable telephony number, Exotel requires business KYC for outbound calling, and I intentionally did not use paid infrastructure. The outbound-call orchestration layer is implemented and provider-ready.
