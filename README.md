@@ -1,6 +1,89 @@
 # ElevateBox AI Caller API
 
-Node.js and Express backend foundation for an AI outbound sales calling system. The project keeps its Vapi integration, while the Stage 3 conversation logic can be tested locally without placing a phone call.
+ElevateBox AI Voice Sales Assistant is an AI-powered voice sales system for e-commerce website leads. It uses Vapi for live voice interaction, Node.js and Express for backend orchestration, Render for deployment, and Meta WhatsApp Cloud API for real WhatsApp delivery.
+
+The system talks to customers, discovers business type, product count, budget, timeline, required features, and buying intent, classifies leads as HOT, WARM, or COLD, triggers WhatsApp during the call for HOT leads, schedules callbacks from spoken phrases, and sends a contextual final WhatsApp follow-up.
+
+## Current Status
+
+### Working
+
+- Live Vapi voice conversation
+- Sales conversation for e-commerce website development
+- Lead discovery and structured data extraction
+- Business type extraction
+- Product count extraction
+- Budget extraction and spoken-number normalization
+- Timeline extraction
+- Feature extraction
+- Buying-intent detection
+- HOT / WARM / COLD classification
+- Mid-call HOT lead action
+- Real Meta WhatsApp Cloud API delivery
+- Spoken callback parsing
+- Callback scheduling logic
+- Contextual final WhatsApp follow-up
+- Mobile number included in final follow-up
+- Architecture image delivery
+- Resume PDF delivery
+- Vapi webhook integration
+- Partial transcript handling
+- Duplicate webhook protection
+- Duplicate WhatsApp action protection
+- Render deployment
+
+### Known Limitation
+
+The outbound call orchestration endpoint is implemented and provider-ready, but autonomous PSTN calling to the final Indian target number requires an international-capable telephony provider/number connected to Vapi.
+
+## Live Links
+
+Backend: [https://elevatebox-ai-caller.onrender.com](https://elevatebox-ai-caller.onrender.com)
+
+Repository: [https://github.com/RajuAnsary/elevatebox-ai-caller](https://github.com/RajuAnsary/elevatebox-ai-caller)
+
+Architecture: [public/architecture.png](public/architecture.png)
+
+Resume: [public/resume.pdf](public/resume.pdf)
+
+## End-to-End Flow
+
+```text
+Customer
+→ Vapi Voice Call
+→ Vapi Webhook
+→ Transcript Processing
+→ Lead Data Extraction
+→ HOT / WARM / COLD Classification
+→ Action Decision
+
+HOT:
+→ Real WhatsApp message during call
+
+WARM:
+→ Callback scheduling
+
+COLD:
+→ Low-priority follow-up
+
+After call:
+→ Contextual final WhatsApp
+→ Mobile number
+→ Architecture image
+→ Resume PDF
+```
+
+## Final Assignment Note
+
+I built an AI voice sales assistant for e-commerce website leads using Vapi, Node.js/Express, Render, and Meta WhatsApp Cloud API.
+
+The system handles live voice conversations, extracts business type, product count, budget, timeline, features, and buying intent, then classifies the lead as HOT, WARM, or COLD. HOT leads trigger a real WhatsApp message while the call is still active. WARM leads can be scheduled for callbacks from spoken phrases such as “tomorrow morning.” After the call, the system sends a contextual WhatsApp follow-up containing the actual discussion, my mobile number, architecture image, and resume.
+
+I added handling for partial Vapi transcripts, duplicate events, spoken-number normalization, contextual follow-ups, and duplicate action protection.
+
+Working now: live Vapi conversation, lead extraction, classification, callback parsing, real Meta WhatsApp mid-call action, and final contextual follow-up with media.
+
+Current limitation: autonomous outbound PSTN calling to the target Indian number requires an international-capable telephony provider/number. The call orchestration endpoint is already implemented and provider-ready.
 
 ## Prerequisites
 
