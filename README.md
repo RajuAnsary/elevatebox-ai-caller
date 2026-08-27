@@ -156,6 +156,13 @@ Current limitation: autonomous outbound PSTN calling to the target Indian number
    | `VAPI_ASSISTANT_ID` | Only for Vapi call/configuration routes | Saved Vapi assistant ID. |
    | `VAPI_PHONE_NUMBER_ID` | Only for outbound Vapi calls | Originating Vapi phone-number ID. |
    | `TARGET_PHONE_NUMBER` | Only for outbound Vapi calls | Outbound test destination in E.164 format. |
+   | `TELEPHONY_PROVIDER` | Optional | `vapi` (default) or `exotel`. |
+   | `EXOTEL_ACCOUNT_SID` | Required for Exotel | Account SID from Exotel API settings. |
+   | `EXOTEL_API_KEY` | Required for Exotel | Exotel API key used as the Basic Auth username. |
+   | `EXOTEL_API_TOKEN` | Required for Exotel | Exotel API token used as the Basic Auth password. |
+   | `EXOTEL_SUBDOMAIN` | Required for Exotel | Exotel API hostname, for example `api.exotel.com`. |
+   | `EXOTEL_CALLER_ID` | Required for Exotel | Registered Exotel caller ID / virtual number. |
+   | `EXOTEL_TARGET_NUMBER` | Required for Exotel | Indian destination to call; test with your own verified number first. |
    | `MY_PHONE_NUMBER` | Optional | Follow-up metadata only. |
    | `RESUME_PATH` | Optional | Resume attachment metadata only. |
    | `ARCHITECTURE_IMAGE_PATH` | Optional | Architecture-image attachment metadata only. |
@@ -251,6 +258,45 @@ curl -X POST http://localhost:3000/api/calls/start
 Before the call is created, the endpoint ensures the saved Vapi assistant has the ElevateBox sales prompt and first message. It then reads the destination exclusively from `.env`, creates a Vapi server SDK client with `VAPI_API_KEY`, and sends the saved assistant and originating phone-number IDs to Vapi. A successful response contains Vapi's call `id` and its initial `status`.
 
 Before testing, make sure you are authorized to call the target number and that your Vapi phone number and account are configured for the destination country.
+
+## Exotel outbound calls for India
+
+Set `TELEPHONY_PROVIDER=exotel` to use Exotel for `POST /api/calls/start`; leave it unset or set it to `vapi` to retain the existing Vapi outbound path. Exotel requests use HTTP Basic Auth with `EXOTEL_API_KEY` and `EXOTEL_API_TOKEN`, and call Exotel’s `Calls/connect.json` API using your account SID and configured subdomain. Credentials are never logged.
+
+Configure these Render environment variables:
+
+```env
+TELEPHONY_PROVIDER=exotel
+EXOTEL_ACCOUNT_SID=
+EXOTEL_API_KEY=
+EXOTEL_API_TOKEN=
+EXOTEL_SUBDOMAIN=api.exotel.com
+EXOTEL_CALLER_ID=
+EXOTEL_TARGET_NUMBER=
+```
+
+Indian numbers are normalized to E.164: `8016178534`, `918016178534`, and `+918016178534` all become `+918016178534`.
+
+After adding your own verified number as `EXOTEL_TARGET_NUMBER`, test one outbound call safely from PowerShell:
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri 'https://elevatebox-ai-caller.onrender.com/api/calls/start'
+```
+
+An Exotel response has this shape:
+
+```json
+{
+  "provider": "exotel",
+  "started": true,
+  "callId": "...",
+  "status": "queued",
+  "error": null
+}
+```
+
+If Exotel rejects a trial, KYC-restricted, or unauthorized destination, the API returns `started: false` with a safe error message; the server remains running. Automated tests mock Exotel HTTP calls and never place a real call.
 
 ## Assistant behavior
 
@@ -501,7 +547,7 @@ To test the conversation in the Vapi dashboard, first call `/api/calls/configure
 | POST | `/api/sessions/:conversationId/end` | Ends the session and mock-sends its final follow-up. |
 | GET | `/api/sessions/:conversationId` | Returns the current in-memory session state. |
 | POST | `/api/calls/configure-assistant` | Applies the ElevateBox sales prompt to the saved Vapi assistant. |
-| POST | `/api/calls/start` | Starts an outbound Vapi call to `TARGET_PHONE_NUMBER`. |
+| POST | `/api/calls/start` | Starts an outbound Vapi or Exotel call according to `TELEPHONY_PROVIDER`. |
 | POST | `/webhooks/call-events` | Placeholder for future call-provider events. |
 | POST | `/webhooks/whatsapp-events` | Placeholder for future WhatsApp-provider events. |
 
